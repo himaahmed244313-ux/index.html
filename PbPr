@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡️ وزارة الكهرباء - مدينة لوس سانتوس ⚡️</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #00d4aa 0%, #0066ff 50%, #ff6b6b 100%);
+            --neon-green: #00ff88;
+            --neon-blue: #00d4ff;
+            --neon-yellow: #ffeb3b;
+            --neon-purple: #d4a3ff;
+            --orange-theme: #ff8c00;
+            --orange-glow: #ff9500;
+            --orange-dark: #e67e22;
+            --dark-bg: #0a0a0a;
+            --glass-bg: rgba(20, 20, 40, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glow-neon: 0 0 30px rgba(0, 255, 136, 0.5);
+            --glow-pulse: 0 0 40px rgba(0, 212, 255, 0.6);
+            --orange-glow-effect: 0 0 25px rgba(255, 140, 0, 0.7);
+            --transition: all 0.6s cubic-bezier(0.23, 1, 0.320, 1);
+            --shadow-neon: 0 25px 50px rgba(0, 0, 0, 0.5);
+            --scrollbar-orange: linear-gradient(45deg, #ff8c00, #ff9500, #e67e22);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: radial-gradient(ellipse at center, #0a0a1f 0%, #000000 70%);
+            color: white;
+            overflow-x: hidden;
+            position: relative;
+            line-height: 1.7;
+            font-weight: 400;
+        }
+
+        /* قائمة الحاضرين الجديدة */
+        .online-users {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            width: 280px;
+            background: rgba(20, 20, 40, 0.95);
+            backdrop-filter: blur(30px);
+            border: 2px solid rgba(255, 140, 0, 0.4);
+            border-radius: 25px;
+            padding: 25px;
+            z-index: 999;
+            box-shadow: var(--shadow-neon), var(--orange-glow-effect);
+            transition: var(--transition);
+        }
+
+        .online-users h3 {
+            color: var(--neon-yellow);
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 0 0 20px var(--neon-yellow);
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: rgba(255, 140, 0, 0.1);
+            border-radius: 15px;
+            border-right: 4px solid var(--orange-glow);
+            transition: var(--transition);
+            animation: userSlideIn 0.5s ease forwards;
+            opacity: 0;
+            transform: translateX(30px);
+        }
+
+        .user-item:nth-child(even) { background: rgba(0, 212, 255, 0.08); border-right-color: var(--neon-blue); }
+        .user-item.you { background: linear-gradient(135deg, rgba(255,140,0,0.3), rgba(255,235,59,0.2)); border-right-color: var(--neon-yellow); box-shadow: 0 0 20px rgba(255,140,0,0.5); }
+
+        @keyframes userSlideIn {
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--orange-theme), var(--neon-yellow));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-left: 12px;
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.6);
+        }
+
+        .user-info { flex: 1; }
+        .user-name { font-weight: 700; color: var(--neon-yellow); font-size: 1rem; }
+        .user-time { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-top: 2px; }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+
+        /* شاشة تسجيل الدخول */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(40px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        .login-overlay.hidden { opacity: 0; pointer-events: none; }
+
+        .login-container {
+            background: rgba(15, 15, 35, 0.98);
+            backdrop-filter: blur(40px);
+            border: 3px solid transparent;
+            border-image: linear-gradient(45deg, var(--orange-theme), var(--neon-yellow)) 1;
+            border-radius: 35px;
+            padding: 60px 50px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: var(--shadow-neon), 0 0 80px rgba(255, 140, 0, 0.4);
+            transform: scale(0.7) translateY(50px);
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-overlay:not(.hidden) .login-container {
+            transform: scale(1) translateY(0);
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(transparent, rgba(255,140,0,0.1), transparent 30%);
+            animation: rotate 4s linear infinite;
+            z-index: -1;
+        }
+
+        .login-title {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--orange-theme), var(--neon-yellow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 40px;
+            text-shadow: 0 0 30px rgba(255, 140, 0, 0.8);
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 20px 25px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 2px solid rgba(255, 140, 0, 0.3);
+            border-radius: 20px;
+            color: white;
+            font-size: 1.1rem;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+            text-align: right;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: var(--orange-glow);
+            box-shadow: 0 0 25px rgba(255, 140, 0, 0.4);
+            background: rgba(35, 35, 65, 0.9);
+        }
+
+        .login-btn, .create-account-btn {
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--orange-theme), var(--orange-glow));
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(255, 140, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn:hover, .create-account-btn:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(255, 140, 0, 0.6);
+        }
+
+        .create-account-btn {
+            background: linear-gradient(135deg, var(--neon-green), var(--neon-blue));
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4);
+        }
+
+        .toggle-auth {
+            background: none;
+            border: 2px solid var(--neon-yellow);
+            color: var(--neon-yellow);
+            margin-top: 15px;
+            padding: 12px 25px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            transition: var(--transition);
+        }
+
+        .toggle-auth:hover {
+            background: var(--neon-yellow);
+            color: var(--dark-bg);
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top: 4px solid var(--neon-yellow);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* باقي الـ CSS كما هو بدون تغيير */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #00ff88, transparent),
+                radial-gradient(2px 2px at 40px 70px, #00d4ff, transparent),
+                radial-gradient(1px 1px at 90px 40px, #ffeb3b, transparent),
+                radial-gradient(1px 1px at 130px 80px, #d4a3ff, transparent),
+                radial-gradient(3px 3px at 160px 120px, var(--orange-theme), transparent),
+                radial-gradient(1.5px 1.5px at 200px 90px, var(--orange-glow), transparent);
+            background-repeat: repeat;
+            background-size: 250px 120px;
+            animation: starfield 60s linear infinite;
+            z-index: -2;
+            opacity: 0.9;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 136, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.08) 1px, transparent 1px),
+                linear-gradient(rgba(255, 140, 0, 0.05) 2px, transparent 2px);
+            background-size: 70px 70px;
+            z-index: -1;
+            animation: gridMove 25s linear infinite;
+        }
+
+        @keyframes starfield { 
+            0% { transform: translateY(0px); } 
+            50% { transform: translateY(-100px) scale(1.1); }
+            100% { transform: translateY(-200px); } 
+        }
+        
+        @keyframes gridMove { 
+            0%, 100% { transform: translate(0, 0); } 
+            33% { transform: translate(20px, 25px); }
+            66% { transform: translate(40px, 15px); }
+        }
+
+        .header {
+            position: fixed; top: 0; width: 100%;
+            background: rgba(10, 10, 26, 0.97); backdrop-filter: blur(25px);
+            z-index: 1000; padding: 18px 0; transition: var(--transition);
+            border-bottom: 2px solid transparent;
+            background-image: linear-gradient(rgba(255,255,255,0.1), rgba(255,255,255,0.1)), var(--scrollbar-orange);
+            background-size: 0 2px;
+            background-repeat: no-repeat;
+            background-position: left bottom;
+        }
+
+        .header.scrolled {
+            border-bottom-color: var(--orange-theme);
+            background-size: 100% 2px;
+            box-shadow: 0 8px 35px rgba(255, 140, 0, 0.2);
+        }
+
+        .nav-container {
+            max-width: 1400px; margin: 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 45px;
+        }
+
+        .logo {
+            font-size: 2rem; font-weight: 900;
+            background: linear-gradient(135deg, var(--orange-theme), var(--orange-glow), var(--neon-yellow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent; background-clip: text;
+            text-shadow: 0 0 25px rgba(255, 140, 0, 0.8);
+            animation: logoGlow 2.5s ease-in-out infinite alternate;
+            position: relative;
+        }
+
+        .logo::after {
+            content: '⚡️'; position: absolute; top: -10px; right: -35px;
+            font-size: 1.5rem; animation: boltPulse 1.5s infinite;
+        }
+
+        @keyframes logoGlow {
+            from { filter: drop-shadow(0 0 20px rgba(255, 140, 0, 0.6)); }
+            to { filter: drop-shadow(0 0 45px rgba(255, 149, 0, 0.9)); }
+        }
+
+        @keyframes boltPulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .user-status {
+            background: linear-gradient(135deg, var(--neon-green), var(--neon-blue));
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .hero {
+            height: 100vh; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+            padding: 25px; position: relative;
+            animation: heroSlide 2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        @keyframes heroSlide {
+            0% { opacity: 0; transform: translateY(120px) scale(0.75); }
+            50% { opacity: 0.7; transform: translateY(-10px) scale(1.02); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .hero-logo {
+            width: 300px; border: 5px solid transparent; border-radius: 50%;
+            padding: 20px; 
+            background: linear-gradient(45deg, var(--neon-green), var(--neon-blue), var(--orange-theme), var(--neon-yellow));
+            background-clip: padding-box, border-box;
+            box-shadow: 0 0 40px rgba(255, 140, 0, 0.6), 0 0 80px rgba(0, 255, 136, 0.4);
+            animation: logoFloat 7s ease-in-out infinite, rotate3D 25s linear infinite;
+            transition: var(--transition); cursor: pointer;
+            position: relative;
+        }
+
+        .hero-logo::before {
+            content: '⚡️'; position: absolute; top: 15px; left: 15px;
+            font-size: 2rem; animation: rotate 3s linear infinite;
+            text-shadow: 0 0 20px var(--orange-glow);
+        }
+
+        .hero-logo:hover {
+            transform: scale(1.2) rotateY(720deg);
+            box-shadow: 0 0 100px rgba(255, 140, 0, 0.9), 0 0 150px rgba(0, 212, 255, 0.6);
+            border-color: var(--orange-glow);
+        }
+
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0px) rotateY(0deg); }
+            33% { transform: translateY(-20px) rotateY(120deg); }
+            66% { transform: translateY(-35px) rotateY(240deg); }
+        }
+
+        @keyframes rotate3D { from { transform: rotateY(0deg) rotateX(10deg); } to { transform: rotateY(360deg) rotateX(10deg); } }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .hero-title {
+            font-size: clamp(3.2rem, 11vw, 6.5rem); 
+            background: linear-gradient(135deg, var(--orange-theme), var(--orange-glow), var(--neon-yellow));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; margin: 35px 0; font-weight: 900; letter-spacing: 4px;
+            text-shadow: 0 0 35px rgba(255, 140, 0, 0.8);
+            animation: titlePulse 2.2s ease-in-out infinite alternate;
+            position: relative;
+        }
+
+        .hero-title::after {
+            content: ''; position: absolute; bottom: -15px; left: 50%;
+            transform: translateX(-50%); width: 80px; height: 4px;
+            background: var(--scrollbar-orange); border-radius: 2px;
+            box-shadow: 0 0 15px var(--orange-glow);
+        }
+
+        @keyframes titlePulse {
+            from { filter: drop-shadow(0 0 25px rgba(255, 140, 0, 0.6)); }
+            to { filter: drop-shadow(0 0 50px rgba(255, 149, 0, 0.9)); }
+        }
+
+        .typewriter { 
+            font-size: 1.8rem; 
+            background: linear-gradient(45deg, var(--orange-theme), var(--neon-yellow));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin: 25px 0; font-weight: 700; min-height: 60px; 
+            text-shadow: 0 0 25px rgba(255, 140, 0, 0.8);
+            position: relative; overflow: hidden;
+        }
+
+        .typewriter::after {
+            content: '|'; animation: blink 1s infinite;
+            margin-right: 5px; color: var(--orange-glow);
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .subtitle {
+            font-size: 1.5rem; 
+            background: linear-gradient(135deg, var(--neon-blue), var(--orange-glow));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: 10px; font-weight: 800; margin-top: 30px; 
+            animation: subtitleGlow 3.5s ease-in-out infinite alternate;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+        }
+
+        @keyframes subtitleGlow {
+            from { filter: drop-shadow(0 0 15px var(--neon-blue)); }
+            to { filter: drop-shadow(0 0 40px var(--neon-blue)), drop-shadow(0 0 50px var(--orange-glow)); }
+        }
+
+        .content-section {
+            padding: 140px 25px 100px; max-width: 1500px; margin: 0 auto;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 50px;
+        }
+
+        .card {
+            background: rgba(20, 20, 40, 0.7); backdrop-filter: blur(30px);
+            border: 2px solid rgba(255, 140, 0, 0.3); border-radius: 35px;
+            padding: 60px 40px; text-align: center; cursor: pointer; position: relative;
+            overflow: hidden; transition: var(--transition); opacity: 0; transform: translateY(80px) scale(0.85);
+            position: relative;
+        }
+
+        .card::before {
+            content: ''; position: absolute; top: 0; left: -120%; width: 120%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 140, 0, 0.25), transparent);
+            transition: left 0.8s ease;
+        }
+
+        .card:nth-child(1) { animation-delay: 0.3s; }
+        .card:nth-child(2) { animation-delay: 0.5s; }
+        .card:nth-child(3) { animation-delay: 0.7s; }
+        .card:nth-child(4) { animation-delay: 0.9s; }
+        .card:nth-child(5) { animation-delay: 1.1s; }
+        .card:nth-child(6) { animation-delay: 1.3s; }
+
+        .card.show { 
+            opacity: 1; 
+            transform: translateY(0) scale(1); 
+            animation: cardBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes cardBounce {
+            0% { transform: translateY(80px) scale(0.85); }
+            60% { transform: translateY(-20px) scale(1.05); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        .card:hover::before { left: 100%; }
+
+        .card:hover {
+            transform: translateY(-30px) scale(1.08); 
+            border-color: var(--orange-glow);
+            box-shadow: var(--shadow-neon), var(--orange-glow-effect), inset 0 0 40px rgba(255, 140, 0, 0.15);
+            background: rgba(35, 35, 65, 0.9);
+        }
+
+        .card-icon { 
+            font-size: 4.5rem; margin-bottom: 30px; 
+            background: linear-gradient(135deg, var(--orange-theme), var(--orange-glow), var(--neon-yellow));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+            background-clip: text; 
+            filter: drop-shadow(0 0 25px rgba(255, 140, 0, 0.7)); 
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .card-icon::before {
+            content: ''; position: absolute; top: -10px; right: -10px;
+            width: 60px; height: 60px; background: radial-gradient(circle, var(--orange-glow), transparent);
+            border-radius: 50%; opacity: 0.3; animation: iconRing 2s infinite;
+        }
+
+        @keyframes iconRing {
+            0% { transform: scale(0.8); opacity: 0.4; }
+            50% { transform: scale(1.2); opacity: 0.2; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .card:hover .card-icon { 
+            transform: scale(1.4) rotate(15deg); 
+            filter: drop-shadow(0 0 50px rgba(255, 140, 0, 0.9)); 
+        }
+
+        .card h2 { 
+            font-size: 2rem; 
+            background: linear-gradient(45deg, var(--neon-yellow), var(--orange-glow));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 25px; font-weight: 800; 
+        }
+
+        .card p { 
+            color: rgba(255, 255, 255, 0.9); font-size: 1.2rem; line-height: 1.8; 
+            position: relative;
+        }
+
+        .card p::after {
+            content: ''; position: absolute; bottom: -10px; right: 0;
+            width: 50px; height: 3px; background: var(--orange-theme);
+            border-radius: 2px; box-shadow: 0 0 10px var(--orange-glow);
+        }
+
+        .modal {
+            display: none; position: fixed; z-index: 9999; left: 0; top: 0;
+            width: 100%; height: 100%; background: rgba(0, 0, 0, 0.94);
+            backdrop-filter: blur(35px); opacity: 0; transition: opacity 0.6s ease;
+        }
+
+        .modal.active { display: flex; align-items: center; justify-content: center; opacity: 1; }
+
+        .modal-content {
+            background: rgba(15, 15, 35, 0.97); backdrop-filter: blur(35px);
+            border: 3px solid transparent; 
+            border-image: var(--scrollbar-orange) 1; border-radius: 45px; 
+            width: 96%; max-width: 1100px; max-height: 92vh; 
+            padding: 60px; position: relative; overflow-y: auto;
+            transform: scale(0.65) translateY(60px); 
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: var(--shadow-neon), 0 0 120px rgba(255, 140, 0, 0.4);
+        }
+
+        .modal.active .modal-content { transform: scale(1) translateY(0); }
+
+        .close {
+            position: absolute; top: 30px; left: 35px; color: var(--neon-yellow);
+            font-size: 2.8rem; cursor: pointer; transition: var(--transition);
+            width: 70px; height: 70px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; 
+            background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(15px);
+            box-shadow: 0 0 20px rgba(255, 235, 59, 0.3);
+        }
+
+        .close:hover {
+            transform: rotate(720deg) scale(1.3); 
+            background: linear-gradient(45deg, var(--orange-theme), var(--neon-yellow));
+            box-shadow: 0 0 40px rgba(255, 140, 0, 0.8), 0 0 60px rgba(255, 235, 59, 0.6);
+        }
+
+        .rules-list { 
+            columns: 2; column-gap: 50px; text-align: right; font-size: 1.1rem;
+            background: rgba(255, 140, 0, 0.08); padding: 30px; border-radius: 25px;
+            border: 2px solid rgba(255, 140, 0, 0.3); box-shadow: inset 0 0 20px rgba(255, 140, 0, 0.1);
+            max-height: 70vh; overflow-y: auto;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 768px) { 
+            .rules-list { columns: 1; padding: 20px; }
+            .online-users { 
+                position: relative; 
+                top: auto; 
+                right: auto; 
+                width: 100%; 
+                margin: 20px 0; 
+            }
+        }
+
+        .step-box {
+            background: linear-gradient(135deg, rgba(255,140,0,0.12), rgba(255,149,0,0.08));
+            border-right: 6px solid var(--orange-glow); border-radius: 25px;
+            padding: 30px; margin-bottom: 25px; transition: var(--transition);
+            position: relative; overflow: hidden; border: 1px solid rgba(255,140,0,0.2);
+            box-shadow: 0 8px 25px rgba(255,140,0,0.15);
+            line-height: 1.7;
+            font-size: 1.1rem;
+        }
+
+        .step-box::before {
+            content: ''; position: absolute; right: 0; top: 0; height: 100%; width: 6px;
+            background: linear-gradient(180deg, var(--orange-theme), var(--orange-glow), var(--neon-yellow));
+            transform: scaleY(0); transition: var(--transition);
+            box-shadow: 0 0 15px var(--orange-glow);
+        }
+
+        .step-box:hover {
+            transform: translateX(-15px) scale(1.02); 
+            border-right-color: var(--neon-yellow);
+            box-shadow: 0 20px 50px rgba(255,140,0,0.4), var(--orange-glow-effect);
+            background: linear-gradient(135deg, rgba(255,140,0,0.18), rgba(255,149,0,0.12));
+        }
+
+        .step-box:hover::before { transform: scaleY(1); }
+
+        .rank-box {
+            background: linear-gradient(135deg, rgba(255,140,0,0.06), rgba(230,126,34,0.04));
+            margin-bottom: 20px; border-radius: 25px;
+            border: 2px solid rgba(255,140,0,0.15); 
+            transition: var(--transition); overflow: hidden;
+            box-shadow: 0 5px 20px rgba(255,140,0,0.1);
+        }
+
+        .rank-box:hover { 
+            border-color: var(--orange-glow); 
+            transform: translateX(-8px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(255,140,0,0.3), var(--orange-glow-effect);
+        }
+
+        .rank-name {
+            padding: 25px 30px; cursor: pointer; font-weight: 800;
+            display: flex; justify-content: space-between; color: #fff;
+            background: linear-gradient(90deg, rgba(255,140,0,0.15), transparent);
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .rank-name::after {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+            width: 6px; background: var(--orange-glow);
+        }
+
+        .rank-desc {
+            padding: 25px 30px; background: rgba(0,0,0,0.6);
+            display: none; border-radius: 0 0 25px 25px;
+            border-top: 1px solid rgba(255,140,0,0.3);
+            line-height: 1.7;
+        }
+
+        ::-webkit-scrollbar { width: 16px; height: 16px; }
+        ::-webkit-scrollbar-track {
+            background: rgba(20, 20, 40, 0.8); 
+            border-radius: 15px; 
+            border: 2px solid rgba(255,140,0,0.2);
+            box-shadow: inset 0 0 10px rgba(255,140,0,0.1);
+        }
+        ::-webkit-scrollbar-thumb { 
+            background: var(--scrollbar-orange); 
+            border-radius: 15px; 
+            border: 3px solid rgba(20,20,40,0.9);
+            box-shadow: var(--orange-glow-effect), inset 0 0 8px rgba(255,255,255,0.2);
+            position: relative;
+        }
+        ::-webkit-scrollbar-thumb::before {
+            content: ''; position: absolute; top: -3px; right: -3px;
+            width: 100%; height: 106%; background: radial-gradient(circle, rgba(255,255,255,0.3), transparent);
+            border-radius: 15px; z-index: -1;
+        }
+        ::-webkit-scrollbar-thumb:hover { 
+            background: linear-gradient(45deg, #ff9500, #ff6b00, #ff8c00);
+            box-shadow: 0 0 20px rgba(255,140,0,0.9), inset 0 0 12px rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+        ::-webkit-scrollbar-corner { background: rgba(20,20,40,0.9); }
+
+        @media (max-width: 768px) {
+            .nav-container { padding: 0 25px; }
+            .content-section { padding: 120px 20px 80px; gap: 30px; }
+            .card { padding: 45px 30px; }
+            .modal-content { padding: 40px 30px; margin: 20px; }
+            .rules-list { columns: 1; padding: 25px 20px; }
+            .login-container { padding: 40px 30px; margin: 20px; }
+        }
+
+        @media (max-width: 480px) {
+            .hero-logo { width: 250px; padding: 15px; }
+            .hero-title { letter-spacing: 2px; font-size: 2.8rem; }
+            .content-section { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-container">
+            <h2 class="login-title">⚡️ وزارة الكهرباء</h2>
+            
+            <div id="loginForm">
+                <div class="input-group">
+                    <input type="email" id="loginEmail" class="login-input" placeholder="📧 البريد الإلكتروني (Gmail)" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="loginPassword" class="login-input" placeholder="🔐 كلمة السر" required>
+                </div>
+                <button id="loginBtn" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i> دخول
+                </button>
+            </div>
+
+            <div id="registerForm" style="display: none;">
+                <div class="input-group">
+                    <input type="email" id="registerEmail" class="login-input" placeholder="📧 بريد إلكتروني جديد (Gmail)" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="registerPassword" class="login-input" placeholder="🔐 كلمة سر قوية (8+ أحرف)" required>
+                </div>
+                <button id="registerBtn" class="login-btn">
+                    <i class="fas fa-user-plus"></i> إنشاء حساب
+                </button>
+            </div>
+
+            <div class="loading" id="loadingSpinner">
+                <div class="spinner"></div>
+                <p>جاري التحقق...</p>
+            </div>
+
+            <button id="toggleAuth" class="toggle-auth">
+                ليس لديك حساب؟ <span id="toggleText">إنشاء حساب جديد</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <header class="header" id="header">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-bolt"></i> وزارة الكهرباء
+            </div>
+            <div id="userStatus" class="user-status" style="display: none;">
+                <i class="fas fa-user-circle"></i> مرحباً، <span id="currentUser"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- قائمة الحاضرين -->
+    <div id="onlineUsers" class="online-users" style="display: none;">
+        <h3><i class="fas fa-users"></i> الحاضرين الآن</h3>
+        <div id="usersList"></div>
+    </div>
+
+    <section class="hero">
+        <img src="https://i.top4top.io/p_3783d4wrf1.png" alt="شعار وزارة الكهرباء" class="hero-logo">
+        <h1 class="hero-title">وزارة الكهرباء والطاقة</h1>
+        <div class="typewriter" id="typewriter"></div>
+        <p class="subtitle">LOS SANTOS ROLEPLAY</p>
+    </section>
+
+    <section class="content-section">
+        <div class="card" onclick="openModal('rules')">
+            <div class="card-icon">📜</div>
+            <h2>قوانين الـ RP</h2>
+            <p>المصطلحات والقوانين الأساسية للسيرفر بالكامل وضوابط اللعب الواقعي</p>
+        </div>
+        
+        <div class="card" onclick="openModal('training')">
+            <div class="card-icon">👨‍🔧</div>
+            <h2>شؤون وظيفتك</h2>
+            <p>دليل العمل الميداني، طرق التركيب، والتعامل مع السويتشات</p>
+        </div>
+        
+        <div class="card" onclick="openModal('promotion')">
+            <div class="card-icon">📈</div>
+            <h2>أنظمة الترقيات</h2>
+            <p>سلم الرتب المعتمد، متطلبات التطور الوظيفي، ونظام التقارير</p>
+        </div>
+        
+        <div class="card" onclick="openModal('sectorRules')">
+            <div class="card-icon">⚖️</div>
+            <h2>ميثاق الرول</h2>
+            <p>القوانين الداخلية الصارمة لقطاع الكهرباء وضوابط السلوك</p>
+        </div>
+        
+        <div class="card" onclick="openModal('understandRanks')">
+            <div class="card-icon">🎓</div>
+            <h2>فهم الرتب</h2>
+            <p>تفاصيل مهام كل موظف، الصلاحيات الممنوحة، والمسؤوليات</p>
+        </div>
+        
+        <div class="card" onclick="openModal('officialProtocol')" style="border: 3px solid var(--orange-glow);">
+            <div class="card-icon">✉️</div>
+            <h2>ميثاق التعامل الرسمي</h2>
+            <p>بروتوكول التعامل مع الجهات الحكومية، الشرطة، والمواطنين</p>
+        </div>
+    </section>
+
+    <div id="infoModal" class="modal" onclick="if(event.target == this) closeModal()">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        // إعداد Firebase (استبدل ببيانات مشروعك)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:xxxxxxxxxxxxxxxxxx"
+        };
+
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        let currentUser = null;
+        let userRef = null;
+        let usersListener = null;
+
+        // Typewriter Effect
+        const texts = [
+            "⚡️ CONQUISE .. طموحنا إنارة المدينة ⚡️", 
+            "🔌 التميز في خدمة المواطن 🔌", 
+            "💡 معاً نبني مستقبل مشرق 💡",
+            "🌟 الاحترافية هدفنا الأول 🌟"
+        ];
+        let textIndex = 0, charIndex = 0, isDeleting = false;
+
+        function typeWriter() {
+            const element = document.getElementById("typewriter");
+            const currentText = texts[textIndex];
+
+            if (isDeleting) {
+                element.textContent = currentText.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                element.textContent = currentText.substring(0, charIndex + 1);
+                charIndex++;
+            }
+
+            let typeSpeed = isDeleting ? 35 : 70;
+            if (!isDeleting && charIndex === currentText.length) {
+                typeSpeed = 2500; isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false; 
+                textIndex = (textIndex + 1) % texts.length; 
+                typeSpeed = 600;
+            }
+            setTimeout(typeWriter, typeSpeed);
+        }
+
+        // تسجيل الدخول
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                alert('يرجى ملء جميع الحقول');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const result = await auth.signInWithEmailAndPassword(email, password);
+                console.log('تم تسجيل الدخول بنجاح:', result.user);
+            } catch (error) {
+                console.error('خطأ في تسجيل الدخول:', error);
+                alert('خطأ في تسجيل الدخول: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // إنشاء حساب
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            
+            if (!email || !password) {
+                alert('يرجى ملء جميع الحقول');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('كلمة السر يجب أن تكون 6 أحرف على الأقل');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const result = await auth.createUserWithEmailAndPassword(email, password);
+                console.log('تم إنشاء الحساب بنجاح:', result.user);
+            } catch (error) {
+                console.error('خطأ في إنشاء الحساب:', error);
+                alert('خطأ في إنشاء الحساب: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // تبديل بين تسجيل الدخول وإنشاء الحساب
+        document.getElementById('toggleAuth').addEventListener('click', () => {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const toggleText = document.getElementById('toggleText');
+
+            if (loginForm.style.display !== 'none') {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                toggleText.textContent = 'لديك حساب؟ تسجيل الدخول';
+            } else {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                toggleText.textContent = 'ليس لديك حساب؟ إنشاء حساب جديد';
+            }
+        });
+
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').classList.toggle('active', show);
+            document.querySelectorAll('.login-btn').forEach(btn => btn.disabled = show);
+        }
+
+        // مراقب حالة المستخدم
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('userStatus').style.display = 'block';
+                document.getElementById('currentUser').textContent = user.email.split('@')[0];
+                document.getElementById('onlineUsers').style.display = 'block';
+                
+                // إضافة المستخدم لقائمة الحاضرين
+                userRef = database.ref('onlineUsers/' + user.uid);
+                userRef.set({
+                    email: user.email,
+                    displayName: user.email.split('@')[0],
+                    timestamp: Date.now()
+                });
+
+                // الاستماع للحاضرين
+                listenToOnlineUsers();
+                
+                // تحميل المحتوى
+                revealCards();
+            } else {
+                currentUser = null;
+                document.getElementById('loginOverlay').classList.remove('hidden');
+                document.getElementById('userStatus').style.display = 'none';
+                document.getElementById('onlineUsers').style.display = 'none';
+            }
+        });
+
+        function listenToOnlineUsers() {
+            const usersList = document.getElementById('usersList');
+            
+            usersListener = database.ref('onlineUsers').on('value', (snapshot) => {
+                usersList.innerHTML = '';
+                const users = [];
+                
+                snapshot.forEach((childSnapshot) => {
+                    const userData = childSnapshot.val();
+                    users.push({
+                        id: childSnapshot.key,
+                        ...userData
+                    });
+                });
+
+                // ترتيب حسب وقت الدخول (الأحدث أولاً)
+                users.sort((a, b) => b.timestamp - a.timestamp);
+
+                users.forEach((user, index) => {
+                    const timeAgo = getTimeAgo(user.timestamp);
+                    const isCurrentUser = user.id === currentUser.uid;
+                    
+                    const userDiv = document.createElement('div');
+                    userDiv.className = `user-item ${isCurrentUser ? 'you' : ''}`;
+                    userDiv.style.animationDelay = `${index * 0.1}s`;
+                    
+                    userDiv.innerHTML = `
+                        <div class="status-indicator"></div>
+                        <div class="user-avatar">${user.displayName.charAt(0).toUpperCase()}</div>
+                        <div class="user-info">
+                            <div class="user-name">${user.displayName}</div>
+                            <div class="user-time">${timeAgo}</div>
+                        </div>
+                    `;
+                    
+                    usersList.appendChild(userDiv);
+                });
+
+                if (users.length === 0) {
+                    usersList.innerHTML = '<div style="text-align:center; color:rgba(255,255,255,0.5);">لا يوجد أحد متصل</div>';
+                }
+            });
+        }
+
+        function getTimeAgo(timestamp) {
+            const now = Date.now();
+            const diff = Math.floor((now - timestamp) / 1000);
+
+            if (diff < 60) return 'الآن';
+            if (diff < 3600) return `${Math.floor(diff/60)} دقيقة`;
+            if (diff < 86400) return `${Math.floor(diff/3600)} ساعة`;
+            return 'منذ يوم';
+        }
+
+        // تنظيف البيانات عند الخروج
+        window.addEventListener('beforeunload', () => {
+            if (userRef) {
+                userRef.remove();
+            }
+            if (usersListener) {
+                database.ref('onlineUsers').off('value', usersListener);
+            }
+        });
+
+        // باقي الـ JavaScript كما هو
+        function revealCards() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.classList.add('show');
+                    card.style.animationDelay = `${0.2 + (index * 0.15)}s`;
+                }, 400 + (index * 200));
+            });
+        }
+
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('header');
+            if (window.scrollY > 100) {
+                header.classList.add('scrolled');
+                header.style.background = 'rgba(10, 10, 26, 0.99)';
+                header.style.backdropFilter = 'blur(35px)';
+                header.style.boxShadow = '0 15px 50px rgba(255, 140, 0, 0.25)';
+            } else {
+                header.classList.remove('scrolled');
+                header.style.background = 'rgba(10, 10, 26, 0.97)';
+                header.style.backdropFilter = 'blur(25px)';
+                header.style.boxShadow = 'none';
+            }
+        });
+
+        // محتوى النوافذ (كما هو)
+        const content = {
+            rules: `<h2 style="color:#ffeb3b; text-align:center; margin-bottom:40px; font-size:2.5rem; text-shadow:0 0 30px rgba(255,235,59,0.8);"><i class="fas fa-gavel"></i> 📋 المصطلحات الأساسية للرول بلاي</h2>
+<div class="rules-list">
+<b>🔹 ATA:</b> نقل الممتلكات من شخصية لأخرى<br>
+<b>🔥 ARSON:</b> تسبب حريق ويجب وجود إطفاء<br>
+<b>❌ FRP:</b> فشل اللاعب في تقمص دور شخصيته<br>
+<b>🐰 Bh:</b> قفزة الأرنب (الجري والقفز باستمرار)<br>
+<b>⚔️ BRAWLC:</b> القتل بدون الـ RP<br>
+<b>🔫 BR:</b> القتل داخل الـ RP فقط<br>
+<b>💀 CK:</b> إعدام الشخصية من قبل الأدمن<br>
+<b>💻 CCTV:</b> لغة التهكير والبرمجة<br>
+<b>🏃 Cr:</b> الجري وتفادي إطلاق النار<br>
+<b>📈 CD:</b> تطوير مهارات الشخصية<br>
+<b>🎯 Dm:</b> القتل بدون سبب<br>
+<b>🚗💥 DDB:</b> إطلاق نار بسلاح ثقيل أثناء القيادة<br>
+<b>🚙💀 Dp:</b> دعس شخص بالـ RP<br>
+<b>😵 Duc:</b> تخريب الشخصية (الانتحار)<br>
+<b>🚨 Dos:</b> شارة بدون ديوتي والعكس<br>
+<b>💣 DFL:</b> تدمير حياة الشخصية<br>
+<b>⭐ GR:</b> القاعدة الذهبية (احترام اللاعبين)<br>
+<b>😡 Kos:</b> الحقد على شخص داخل/خارج الـ RP<br>
+<b>🏃‍♂️🚪 LTA:</b> الهروب من الـ RP (الخروج من السيرفر)<br>
+<b>🔫📢 LK:</b> إذن لإطلاق نار في مكان عام<br>
+<b>💬 Mg:</b> تفريق بين الشاتين<br>
+<b>🎯 Mc:</b> إطلاق نار أو ضرب شخص بالخطأ<br>
+<b>👤 MA:</b> امتلاك حساب واحد فقط<br>
+<b>🔢 Multiple Accounts:</b> تعدد الحسابات<br>
+<b>💰 Nj:</b> السرقة دون عمل RP<br>
+<b>🚗 NG:</b> تنزيل شخص من مركبته الخاصة<br>
+<b>👊 Nk:</b> ضرب شخص أثناء الجري<br>
+<b>🚫 NON-RP:</b> فعل أشياء بدون RP<br>
+<b>🦸 Pg:</b> فعل أشياء خارقة (Power Gaming)<br>
+<b>🧠 Pk:</b> فقدان الذاكرة المؤقت بعد القتل<br>
+<b>🚔 PD:</b> استفزاز الشرطة من أجل المتعة<br>
+<b>🔍 PI:</b> قانون تفتيش الممتلكات والعقارات<br>
+<b>🔄 RK:</b> قتل الانتقام (Revenge Kill)<br>
+<b>🏃‍♂️ RTR:</b> الركض المستمر دون توقف (ضمن الـ PG)<br>
+<b>📍 RPZ:</b> لعب RP في منطقة محدودة<br>
+<b>💣 RPG:</b> أخذ RP جي من أمر السلاح<br>
+<b>🔄 RDM:</b> قتل نفس الشخص بدون توقف<br>
+<b>💀 SK:</b> قتل اللاعبين في مكان الـ Respawn<br>
+<b>🤮 Sl:</b> فعل أشياء مقززة بمكان عام<br>
+<b>💸 Sp:</b> النصب بأكثر من 10 آلاف<br>
+<b>⭐ Sc:</b> استخدام اسم شخصية مشهورة<br>
+<b>⚔️ Tk:</b> قتل شخص بالفاكشن<br>
+<b>🚬 UH:</b> فعل العادات المضرة<br>
+<b>🚗💥 VDM:</b> استخدام السيارة لدعس الأشخاص<br>
+<b>📢 WA:</b> إعلان خاطئ<br>
+<b>🏍️💨 WH:</b> القفز بالموتوسيكل فوق الجبال والبيوت<br>
+<b>📡 WS:</b> Statues خاطئ
+</div>`,
+
+            training: `<h2 style="color:#00d4ff; text-align:center; margin-bottom:35px; font-size:2.5rem; text-shadow:0 0 30px rgba(0,212,255,0.8);"><i class="fas fa-tools"></i> 🔧 خطوات العمل الميداني</h2>
+<div class="step-box">1️⃣ تذهب إلى مقر شركة الكهرباء ستجد "بوت" يبيع Switch، تقوم بشراء السويتش.</div>
+<div class="step-box">2️⃣ تقوم بوضعه داخل أي بيت أو محل تريد تركيب الكهرباء فيه.</div>
+<div class="step-box">3️⃣ تقوم بسحب السويتش من الإنفنتوري إلى الجدار أو أي مكان مناسب له.</div>
+<div class="step-box">4️⃣ تضغط كليك يمين على السويتش ثم سيظهر لك عدة خيارات ومنها Electronic Setting.</div>
+<div class="step-box">5️⃣ تضغط عليه وتضع رقم الإنتريور الذي تريد أن تضع به الكهرباء ومن ثم تضغط Use.</div>
+<div class="step-box">6️⃣ تضغط مرة أخرى كليك يمين على السويتش وتختار الخيار Switch On وستشتغل الكهرباء.</div>
+<div style="background: linear-gradient(to right, var(--neon-green), transparent); padding: 25px; border-radius: 25px; margin-top: 30px; text-align: center; border: 2px solid var(--neon-yellow); box-shadow: var(--glow-neon);">
+    <span style="font-size:1.3rem;"><i class="fas fa-dollar-sign"></i> <b>💰 رسوم الخدمة المعتمدة:</b></span> <br>
+    <span style="color:var(--neon-yellow); font-size:2.5rem; font-weight:900;">1500$</span>
+</div>`,
+
+            promotion: `<h2 style="color:#ffeb3b; text-align:center; margin-bottom:35px; font-size:2.5rem; text-shadow:0 0 30px rgba(255,235,59,0.8);"><i class="fas fa-chart-line"></i> 📊 نظام الترقيات والتقارير</h2>
+<div class="step-box" style="display:flex; justify-content:space-between; font-size:1.1rem;">
+    <span>🔧 كهربائي تحت التدريب ← ⚡ كهربائي أساسي</span> <b style="color:var(--neon-yellow);">(8 تقارير)</b>
+</div>
+<div class="step-box" style="display:flex; justify-content:space-between; font-size:1.1rem;">
+    <span>⚡ كهربائي أساسي ← 🔌 كهربائي متمرس</span> <b style="color:var(--neon-yellow);">(12 تقرير)</b>
+</div>
+<div class="step-box" style="display:flex; justify-content:space-between; font-size:1.1rem;">
+    <span>🔌 كهربائي متمرس ← ⭐ كهربائي محترف</span> <b style="color:var(--neon-yellow);">(14 تقرير)</b>
+</div>
+<div class="step-box" style="display:flex; justify-content:space-between; font-size:1.1rem;">
+    <span>⭐ كهربائي محترف ← 🛡️ إصلاح الكهرباء والأمان</span> <b style="color:var(--neon-yellow);">(18 تقرير)</b>
+</div>
+<div class="step-box" style="display:flex; justify-content:space-between; font-size:1.1rem;">
+    <span>🛡️ إصلاح الكهرباء والأمان ← 📞 استقبال الشكاوي</span> <b style="color:var(--neon-yellow);">(22 تقرير)</b>
+</div>
+<div style="color: #ff6b6b; background:rgba(255,107,107,0.15); padding:20px; border-radius:20px; margin-top:30px; text-align:center; border:2px solid #ff6b6b; box-shadow:0 0 20px rgba(255,107,107,0.3);">
+    <i class="fas fa-exclamation-triangle"></i> <b>⚠️ تنبيه إداري:</b> سيتم تصفير جميع التقارير بعد إرسال رسالة الترقية.
+</div>`,
+
+            sectorRules: `<h2 style="color:#00ff88; text-align:center; margin-bottom:35px; font-size:2.5rem; text-shadow:0 0 30px rgba(0,255,136,0.8);"><i class="fas fa-shield-alt"></i> 🛡️ ميثاق قطاع وزارة الكهرباء</h2>
+<div style="display:grid; gap:15px;">
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#1</b> الاحترافية الكاملة واحترام المواطنين والجهات الحكومية.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#2</b> منع استغلال الوظيفة لمكاسب شخصية.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#3</b> يُمنع النصب أو المبالغة في أسعار السويتشات نهائياً.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#4</b> يُحظر فصل التيار إلا لسبب فني مبرر ضمن سيناريو RP معتمد.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#5</b> تنفيذ الفحص والصيانة الدورية لضمان الخدمة.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#6</b> التعاون مع الجهات الأمنية في حالات الطوارئ.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#7</b> الاستجابة للبلاغات بسرعة وبأسلوب واقعي.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#8</b> الالتزام بالأوامر الإدارية والتسلسل القيادي.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#9</b> يمنع استخدام صلاحيات الوزارة لأغراض شخصية.</div>
+<div class="step-box"><b style="color:var(--neon-yellow); font-size:1.2rem;">#10</b> الحفاظ على سمعة القطاع داخل وخارج العمل.</div>
+</div>`,
+
+            understandRanks: `<h2 style="color:#d4a3ff; text-align:center; margin-bottom:35px; font-size:2.5rem; text-shadow:0 0 30px rgba(212,163,255,0.8);"><i class="fas fa-graduation-cap"></i> 🎓 دليل مهام الرتب</h2>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">1️⃣ كهربائي تحت التدريب <span>▼</span></div>
+    <div class="rank-desc">الموظف الجديد، مهمته التعلم ومرافقة الرتب الأعلى لمواقع العمل.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">2️⃣ كهربائي أساسي <span>▼</span></div>
+    <div class="rank-desc">بدأ العمل الميداني المستقل وتركيب الكهرباء في المنازل.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">3️⃣ كهربائي متمرس <span>▼</span></div>
+    <div class="rank-desc">لديه خبرة كافية لتوجيه المبتدئين والتعامل مع الأعطال.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">4️⃣ كهربائي محترف <span>▼</span></div>
+    <div class="rank-desc">خبير فني بالوزارة، مسؤول عن المشاريع المعقدة.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">5️⃣ قسم إصلاح الكهرباء والأمان <span>▼</span></div>
+    <div class="rank-desc">وحدة النخبة المسؤولة عن تأمين الأنظمة وحالات الطوارئ.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">6️⃣ قسم استقبال الشكاوي <span>▼</span></div>
+    <div class="rank-desc">التواصل المباشر مع المواطنين وتلقي بلاغات الأعطال.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">7️⃣ مسؤول الموارد البشرية <span>▼</span></div>
+    <div class="rank-desc">إدارة شؤون الموظفين، التوظيف، ومراقبة التقارير.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">8️⃣ نائب المدير العام <span>▼</span></div>
+    <div class="rank-desc">مساعدة المدير العام في إدارة الفكشن واتخاذ القرارات.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">9️⃣ المدير العام <span>▼</span></div>
+    <div class="rank-desc">المسؤول الإداري الأول عن سير العمل والقرارات التنظيمية.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">🔟 نائب وزير الطاقة <span>▼</span></div>
+    <div class="rank-desc">الإشراف الوزاري المباشر وتنسيق العلاقات الحكومية.</div>
+</div>
+<div class="rank-box">
+    <div class="rank-name" onclick="toggleRank(this)">👑 وزير الطاقة والكهرباء <span>▼</span></div>
+    <div class="rank-desc">أعلى سلطة في القطاع، صاحب الرؤية والقرارات السيادية.</div>
+</div>`,
+
+            officialProtocol: `<h2 style="color:#00d4ff; text-align:center; margin-bottom:35px; font-size:2.5rem; text-shadow:0 0 30px rgba(0,212,255,0.8);"><i class="fas fa-handshake"></i> 🤝 بروتوكول التعامل الرسمي</h2>
+<div style="background:rgba(0, 212, 255, 0.08); padding:30px; border-radius:30px; border:2px solid rgba(0, 212, 255, 0.3); box-shadow: var(--glow-pulse);">
+    <p style="color:var(--neon-blue); font-weight:900; font-size:1.4rem; border-bottom:2px solid rgba(0,212,255,0.5); padding-bottom:15px; margin-bottom:25px;">
+        <i class="fas fa-shield-police"></i> 🛡️ مع الأجهزة الأمنية:
+    </p>
+    <div class="step-box" style="margin-bottom:20px;">التعاون المطلق وتقديم الدعم الفني فور الطلب دون تأخير.</div>
+    <div class="step-box">يُمنع الدخول في مشاحنات لفظية، والاحترام هو سيد الموقف.</div>
+    
+    <p style="color:var(--neon-blue); font-weight:900; font-size:1.4rem; border-bottom:2px solid rgba(0,212,255,0.5); padding-bottom:15px; margin:30px 0 20px 0;">
+        <i class="fas fa-users"></i> 👥 مع المواطنين:
+    </p>
+    <div class="step-box">تقديم الخدمة بمهنية عالية. في حال حدوث تجاوز من المواطن، التزم الصمت وقم بالتوثيق (تصوير) ورفع البلاغ للإدارة فوراً.</div>
+</div>`
+        };
+
+        function openModal(type) {
+            if (!currentUser) return;
+            const modal = document.getElementById('infoModal');
+            document.getElementById('modalBody').innerHTML = content[type];
+            modal.style.display = "flex";
+            setTimeout(() => modal.classList.add('active'), 10);
+            document.body.style.overflow = "hidden";
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('infoModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = "none";
+                document.body.style.overflow = "auto";
+            }, 600);
+        }
+
+        function toggleRank(element) {
+            const desc = element.nextElementSibling;
+            const span = element.querySelector('span');
+            if (desc.style.display === "block") {
+                desc.style.display = "none"; span.innerText = "▼";
+            } else {
+                desc.style.display = "block"; span.innerText = "▲";
+            }
+        }
+
+        window.addEventListener('load', () => {
+            typeWriter();
+        });
+
+        let ticking = false;
+        function updateScroll() {
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        }
+        window.addEventListener('scroll', updateScroll);
+    </script>
+</body>
+</html>
